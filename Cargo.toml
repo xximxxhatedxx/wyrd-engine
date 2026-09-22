@@ -1,0 +1,70 @@
+[package]
+name = "wyrd-engine"
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.85"
+authors = ["xximxxhatedxx <ghostr210305@gmail.com>"]
+license = "MIT OR Apache-2.0"
+description = "Core Wayland, Lua, WASM and rendering engine for Wyrd Shell"
+repository = "https://github.com/xximxxhatedxx/wyrd-engine"
+homepage = "https://github.com/xximxxhatedxx/wyrd-engine"
+readme = "README.md"
+
+[features]
+default = []
+systemd = []
+gpu-render = ["dep:wgpu", "dep:pollster"]
+
+[dependencies]
+# Rendering & Graphics
+wgpu                  = { version = "30", optional = true }
+pollster              = { version = "0.4", optional = true }
+glam                  = "0.33"
+tiny-skia             = "0.12"
+cosmic-text           = "0.19"
+fontdb                = "0.24"
+image                 = "0.25"
+resvg                 = { version = "0.48", default-features = false }
+slotmap               = "1"
+
+# Wayland
+wayland-client        = "0.31"
+wayland-protocols     = { version = "0.32", features = ["client", "staging", "unstable"] }
+wayland-protocols-wlr = { version = "0.3", features = ["client"] }
+wayland-backend       = "0.3"
+
+# Input
+xkbcommon             = "0.9"
+
+# Async & Event
+tokio                 = { version = "1", features = ["rt-multi-thread", "macros", "net", "sync", "time", "process", "fs", "io-util", "signal"] }
+futures-util          = { version = "0.3.34", default-features = false }
+
+# Lua Configuration Engine
+mlua                  = { version = "0.12", features = ["lua54", "vendored", "async", "send", "serialize"] }
+
+# Config, State & Filesystem
+notify-debouncer-mini = "0.7"
+notify                = "8"
+serde                 = { version = "1", features = ["derive"] }
+serde_json            = "1"
+toml                  = "0.8"
+shell-words           = "1"
+
+# IPC & D-Bus
+zbus                  = "5"
+
+# WASM Sandboxed Host
+wasmtime              = "29"
+
+# Error & Logging
+anyhow                = "1"
+log                   = "0.4"
+
+# Misc
+libc                  = "0.2"
+
+[dev-dependencies]
+tokio-test = "0.4"
+wat = "1.0"
+tempfile = "3"
