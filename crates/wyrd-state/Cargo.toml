@@ -1,0 +1,19 @@
+[package]
+name = "wyrd-state"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+authors.workspace = true
+repository.workspace = true
+homepage.workspace = true
+readme = "README.md"
+keywords.workspace = true
+categories.workspace = true
+description = "Cross-process atomic state file serialization for Wyrd (theme.toml, wallpaper.toml)"
+
+[dependencies]
+anyhow = "1"
+libc = "0.2"
+serde = { version = "1", features = ["derive"] }
+toml = "0.8"

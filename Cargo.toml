@@ -1,0 +1,46 @@
+[workspace]
+members = [
+    "crates/wyrd-compositor",
+    "crates/wyrd-config",
+    "crates/wyrd-engine",
+    "crates/wyrd-graphics",
+    "crates/wyrd-script",
+    "crates/wyrd-state",
+    "crates/wyrd-wasm",
+    "crates/wyrd-wayland",
+    "crates/wyrd-widgets",
+]
+default-members = [
+    "crates/wyrd-compositor",
+    "crates/wyrd-config",
+    "crates/wyrd-engine",
+    "crates/wyrd-graphics",
+    "crates/wyrd-script",
+    "crates/wyrd-state",
+    "crates/wyrd-wasm",
+    "crates/wyrd-wayland",
+    "crates/wyrd-widgets",
+]
+resolver = "2"
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.90"
+license = "MIT OR Apache-2.0"
+authors = ["xximxxhatedxx <ghostr210305@gmail.com>"]
+repository = "https://github.com/xximxxhatedxx/wyrd-engine"
+homepage = "https://github.com/xximxxhatedxx/wyrd-engine"
+keywords = ["wayland", "layer-shell", "lua", "wasm", "gui"]
+categories = ["gui", "rendering", "os::linux-apis"]
+
+[workspace.dependencies]
+wyrd-state      = { path = "crates/wyrd-state", version = "0.1.0" }
+wyrd-graphics   = { path = "crates/wyrd-graphics", version = "0.1.0", default-features = false }
+wyrd-script     = { path = "crates/wyrd-script", version = "0.1.0", default-features = false }
+wyrd-compositor = { path = "crates/wyrd-compositor", version = "0.1.0" }
+wyrd-widgets    = { path = "crates/wyrd-widgets", version = "0.1.0" }
+wyrd-wayland    = { path = "crates/wyrd-wayland", version = "0.1.0" }
+wyrd-wasm       = { path = "crates/wyrd-wasm", version = "0.1.0" }
+wyrd-config     = { path = "crates/wyrd-config", version = "0.1.0", default-features = false }
+wyrd-engine     = { path = "crates/wyrd-engine", version = "0.1.0" }

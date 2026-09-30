@@ -1,0 +1,28 @@
+[package]
+name = "wyrd-script"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+authors.workspace = true
+repository.workspace = true
+homepage.workspace = true
+readme = "README.md"
+keywords.workspace = true
+categories.workspace = true
+description = "Lua 5.4 scripting runtime, host extension trait, and hot-reload watcher for Wyrd"
+
+[features]
+default = ["lua"]
+lua = ["dep:mlua"]
+
+[dependencies]
+anyhow = "1"
+log = "0.4"
+mlua = { version = "0.12", features = ["lua54", "vendored", "async", "send", "serialize"], optional = true }
+notify = "8"
+notify-debouncer-mini = "0.7"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+tokio = { version = "1", default-features = false, features = ["fs", "sync"] }
+toml = "0.8"
