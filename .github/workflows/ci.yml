@@ -1,0 +1,79 @@
+name: CI
+
+on:
+  push:
+    branches: [ "main" ]
+    tags: [ "v*" ]
+  pull_request:
+    branches: [ "main" ]
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  test:
+    name: Build & Test (Stable)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy, rustfmt
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwayland-dev libxkbcommon-dev libfontconfig1-dev
+
+      - name: Install cargo-machete
+        uses: taiki-e/install-action@cargo-machete
+
+      - name: Check for unused dependencies
+        run: cargo machete --with-metadata
+
+      - name: Verify crate DAG boundaries
+        run: |
+          ! (cargo tree -p wyrd-graphics --depth 2 | grep -q wyrd-widgets)
+          ! (cargo tree -p wyrd-wayland --depth 2 | grep -qE 'wyrd-(script|widgets)')
+          ! (cargo tree -p wyrd-compositor --depth 2 | grep -qE 'wyrd-(graphics|script|wayland)')
+          ! (cargo tree -p wyrd-wasm --depth 2 | grep -q wyrd-wayland)
+          ! (cargo tree -p wyrd-script --depth 2 | grep -qE 'wyrd-(graphics|widgets|wayland|state|compositor|wasm|config)')
+
+      - name: Verify crate README files and packaging
+        run: |
+          for c in wyrd-state wyrd-graphics wyrd-script wyrd-compositor \
+                   wyrd-widgets wyrd-wayland wyrd-wasm wyrd-config wyrd-engine; do
+            test -f "crates/$c/README.md"
+            cargo package --list -p "$c" | grep -q '^README\.md$'
+          done
+
+      - name: Check code formatting
+        run: cargo fmt --all -- --check
+
+      - name: Cargo check
+        run: cargo check --locked --all-targets --all-features
+
+      - name: Run all tests
+        run: cargo test --locked --all-targets --all-features --verbose
+
+      - name: Run Clippy
+        run: cargo clippy --locked --all-targets --all-features -- -D warnings
+
+  msrv:
+    name: MSRV (1.90)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust 1.90 toolchain
+        uses: dtolnay/rust-toolchain@1.90
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwayland-dev libxkbcommon-dev libfontconfig1-dev
+
+      - name: Cargo check on MSRV
+        run: cargo check --locked --workspace --features wyrd-engine/config,wyrd-engine/lua,wyrd-engine/wasm,wyrd-engine/http-fetch

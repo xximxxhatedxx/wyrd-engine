@@ -1,0 +1,30 @@
+[package]
+name = "wyrd-config"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+authors.workspace = true
+repository.workspace = true
+homepage.workspace = true
+readme = "README.md"
+keywords.workspace = true
+categories.workspace = true
+description = "Typed shell configuration, surface/widget/layout/style Lua parsers, and config loader for Wyrd"
+
+[features]
+default = ["lua"]
+lua = ["dep:mlua", "wyrd-script/lua"]
+
+[dependencies]
+anyhow = "1"
+log = "0.4"
+mlua = { version = "0.12", features = ["lua54", "vendored", "async", "send", "serialize"], optional = true }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+wyrd-graphics = { workspace = true }
+wyrd-script = { workspace = true }
+wyrd-widgets = { workspace = true }
+
+[dev-dependencies]
+tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
