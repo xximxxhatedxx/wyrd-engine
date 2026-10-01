@@ -41,6 +41,6 @@ wyrd-script     = { path = "crates/wyrd-script", version = "0.1.0", default-feat
 wyrd-compositor = { path = "crates/wyrd-compositor", version = "0.1.0" }
 wyrd-widgets    = { path = "crates/wyrd-widgets", version = "0.1.0" }
 wyrd-wayland    = { path = "crates/wyrd-wayland", version = "0.1.0" }
-wyrd-wasm       = { path = "crates/wyrd-wasm", version = "0.1.0" }
+wyrd-wasm       = { path = "crates/wyrd-wasm", version = "0.1.1" }
 wyrd-config     = { path = "crates/wyrd-config", version = "0.1.0", default-features = false }
-wyrd-engine     = { path = "crates/wyrd-engine", version = "0.1.0" }
+wyrd-engine     = { path = "crates/wyrd-engine", version = "0.1.1" }

@@ -1,6 +1,6 @@
 //! WASM Engine setup.
 
-use anyhow::{Context, Result};
+use anyhow::Result;
 use wasmtime::{Config, Engine};
 
 #[derive(Clone)]
@@ -21,7 +21,8 @@ impl WasmEngine {
         config.memory_init_cow(true);
         config.parallel_compilation(false);
 
-        let engine = Engine::new(&config).context("failed to initialize Wasmtime Engine")?;
+        let engine = Engine::new(&config)
+            .map_err(|e| anyhow::anyhow!("failed to initialize Wasmtime Engine: {e}"))?;
         Ok(Self { engine })
     }
 

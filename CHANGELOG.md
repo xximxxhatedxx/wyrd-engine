@@ -2,6 +2,15 @@
 
 All notable changes to `wyrd-engine` will be documented in this file.
 
+## [0.1.1] - 2026-10-02
+
+### Security
+- Updated the WASM runtime from Wasmtime 29 to 49.0.1.
+
+### Fixed
+- Adapted WASM engine initialization, module compilation and instantiation error handling to the updated Wasmtime API.
+- Added the required store-data lifetime bound when reading strings from guest memory.
+
 ## [0.1.0] - 2026-09-30
 
 ### Fixed

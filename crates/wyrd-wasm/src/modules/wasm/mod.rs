@@ -137,7 +137,7 @@ impl WasmModuleRunner {
                         }
                     }
                     Module::new(engine.engine(), &self.wasm_bytes)
-                        .with_context(|| format!("failed to compile WASM module '{}'", name))?
+                        .map_err(|e| anyhow::anyhow!("failed to compile WASM module '{}': {e}", name))?
                 }
             };
             self.wasm_bytes = Vec::new();
@@ -167,7 +167,7 @@ impl WasmModuleRunner {
 
         let instance = linker
             .instantiate(&mut store, &module)
-            .with_context(|| format!("failed to instantiate WASM module '{}'", name))?;
+            .map_err(|e| anyhow::anyhow!("failed to instantiate WASM module '{}': {e}", name))?;
 
         let guest = GuestExports::extract(&mut store, &instance)?;
 
@@ -214,7 +214,7 @@ impl WasmModuleRunner {
                 }
                 Err(e) => {
                     error!("WASM module '{}' init trapped: {}", name, e);
-                    return Err(e);
+                    return Err(e.into());
                 }
             }
         } else {

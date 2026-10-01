@@ -125,7 +125,7 @@ impl GuestExports {
         Ok(())
     }
 
-    pub fn read_string<T, S: wasmtime::AsContext<Data = T>>(
+    pub fn read_string<T: 'static, S: wasmtime::AsContext<Data = T>>(
         memory: &Memory,
         store: S,
         ptr: u32,

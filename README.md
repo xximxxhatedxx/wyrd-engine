@@ -1,6 +1,6 @@
 # wyrd-engine
 
-> **Status (`v0.1.0`)**: Early public release. Internal Rust APIs and state file schemas may evolve before `1.0`.
+> **Status (`v0.1.1`)**: Early public release. Internal Rust APIs and state file schemas may evolve before `1.0`.
 
 Core rendering and runtime workspace for the Wyrd desktop ecosystem. Provides Wayland `wlr-layer-shell` surface management, Flexbox/Grid widget layout, Lua 5.4 scripting, sandboxed WebAssembly module execution, spring-physics animations, and 2D software rasterization (`tiny-skia` + `cosmic-text`, with experimental `wgpu` scaffolding behind the `gpu-render` feature).
 
@@ -33,9 +33,9 @@ This repository is a Cargo workspace publishing both the unified [`wyrd-engine`]
 ```toml
 # Full facade crate (for wyrd-shell):
 [dependencies]
-wyrd-engine = "0.1.0"
+wyrd-engine = "0.1.1"
 # or via Git:
-# wyrd-engine = { git = "https://github.com/xximxxhatedxx/wyrd-engine.git", tag = "v0.1.0" }
+# wyrd-engine = { git = "https://github.com/xximxxhatedxx/wyrd-engine.git", tag = "v0.1.1" }
 
 # Lightweight subcrates (e.g., for wallpaper/lock daemons — without wasm or compositor):
 [dependencies]

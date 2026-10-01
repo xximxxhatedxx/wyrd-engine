@@ -8,7 +8,7 @@ Unified facade crate re-exporting [`wyrd-state`](https://crates.io/crates/wyrd-s
 
 ```toml
 [dependencies]
-wyrd-engine = "0.1.0"
+wyrd-engine = "0.1.1"
 ```
 
 ## System Dependencies
