@@ -45,6 +45,13 @@ fn resolve_binary_in_path(prog_name: &str) -> Option<std::path::PathBuf> {
     None
 }
 
+fn is_systemd_user_available() -> bool {
+    std::env::var_os("XDG_RUNTIME_DIR")
+        .map(|dir| std::path::Path::new(&dir).join("systemd/private").exists())
+        .unwrap_or(false)
+        && resolve_binary_in_path("systemd-run").is_some()
+}
+
 fn run_blocking<F, R>(f: F) -> R
 where
     F: FnOnce() -> R,
@@ -579,39 +586,90 @@ pub fn register_host_functions(linker: &mut Linker<ModuleHostState>) -> Result<(
             };
 
             if out_max_len == 0 {
-                let mut cmd = std::process::Command::new(&resolved_path);
-                cmd.args(&args);
-                cmd.stdin(std::process::Stdio::null())
-                    .stdout(std::process::Stdio::null())
-                    .stderr(std::process::Stdio::null());
-                #[cfg(unix)]
-                {
-                    use std::os::unix::process::CommandExt;
-                    // SAFETY: setsid, signal, and prctl are async-signal-safe POSIX calls.
-                    unsafe {
-                        cmd.pre_exec(|| {
-                            let _ = libc::syscall(
-                                libc::SYS_close_range,
-                                3usize,
-                                usize::MAX,
-                                libc::CLOSE_RANGE_CLOEXEC as usize,
-                            );
-                            let _ = libc::setsid();
-                            libc::signal(libc::SIGHUP, libc::SIG_IGN);
-                            let _ = libc::prctl(libc::PR_SET_PDEATHSIG, 0, 0, 0, 0);
-                            Ok(())
-                        });
+                let systemd_available = is_systemd_user_available();
+                let mut spawned_child = None;
+
+                if systemd_available {
+                    let mut cmd = std::process::Command::new("systemd-run");
+                    cmd.arg("--user")
+                        .arg("--scope")
+                        .arg("--slice=app.slice")
+                        .arg("-q")
+                        .arg("--")
+                        .arg(&resolved_path)
+                        .args(&args);
+                    cmd.stdin(std::process::Stdio::null())
+                        .stdout(std::process::Stdio::null())
+                        .stderr(std::process::Stdio::null());
+                    #[cfg(unix)]
+                    {
+                        use std::os::unix::process::CommandExt;
+                        // SAFETY: setsid, signal, and prctl are async-signal-safe POSIX calls.
+                        unsafe {
+                            cmd.pre_exec(|| {
+                                let _ = libc::syscall(
+                                    libc::SYS_close_range,
+                                    3usize,
+                                    usize::MAX,
+                                    libc::CLOSE_RANGE_CLOEXEC as usize,
+                                );
+                                let _ = libc::setsid();
+                                libc::signal(libc::SIGHUP, libc::SIG_IGN);
+                                let _ = libc::prctl(libc::PR_SET_PDEATHSIG, 0, 0, 0, 0);
+                                Ok(())
+                            });
+                        }
+                    }
+                    if let Ok(child) = cmd.spawn() {
+                        spawned_child = Some(child);
+                    } else {
+                        warn!(
+                            "host_exec_process systemd-run launch failed for '{}', falling back to direct spawn",
+                            prog_name
+                        );
                     }
                 }
-                return match cmd.spawn() {
-                    Ok(child) => {
+
+                if spawned_child.is_none() {
+                    let mut cmd = std::process::Command::new(&resolved_path);
+                    cmd.args(&args);
+                    cmd.stdin(std::process::Stdio::null())
+                        .stdout(std::process::Stdio::null())
+                        .stderr(std::process::Stdio::null());
+                    #[cfg(unix)]
+                    {
+                        use std::os::unix::process::CommandExt;
+                        // SAFETY: setsid, signal, and prctl are async-signal-safe POSIX calls.
+                        unsafe {
+                            cmd.pre_exec(|| {
+                                let _ = libc::syscall(
+                                    libc::SYS_close_range,
+                                    3usize,
+                                    usize::MAX,
+                                    libc::CLOSE_RANGE_CLOEXEC as usize,
+                                );
+                                let _ = libc::setsid();
+                                libc::signal(libc::SIGHUP, libc::SIG_IGN);
+                                let _ = libc::prctl(libc::PR_SET_PDEATHSIG, 0, 0, 0, 0);
+                                Ok(())
+                            });
+                        }
+                    }
+                    match cmd.spawn() {
+                        Ok(child) => spawned_child = Some(child),
+                        Err(e) => {
+                            warn!("host_exec_process failed to spawn '{}': {}", prog_name, e);
+                            return -4;
+                        }
+                    }
+                }
+
+                return match spawned_child {
+                    Some(child) => {
                         let _ = CHILD_REAPER.send(child);
                         0
                     }
-                    Err(e) => {
-                        warn!("host_exec_process failed to spawn '{}': {}", prog_name, e);
-                        -4
-                    }
+                    None => -4,
                 };
             }
 

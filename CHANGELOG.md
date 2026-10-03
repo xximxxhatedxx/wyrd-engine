@@ -2,10 +2,15 @@
 
 All notable changes to `wyrd-engine` will be documented in this file.
 
-## [0.1.1] - 2026-10-02
+## [0.1.1] - 2026-10-03
 
-### Security
-- Updated the WASM runtime from Wasmtime 29 to 49.0.1.
+### Security & Dependencies
+- Updated the WASM runtime from Wasmtime 29 to 49.0.1 (`wyrd-wasm`).
+- Updated `toml` from 0.8 to 1 (`wyrd-state`, `wyrd-script`, `wyrd-wasm`).
+- Updated `pollster` from 0.4 to 1.0 (`wyrd-graphics`).
+
+### Added
+- Transient systemd scope isolation in `wyrd-wasm` (`host_exec_process`): background GUI/app launches wrap through `systemd-run --user --scope --slice=app.slice` so child applications survive host shell service restarts, with automatic fallback to direct process spawning.
 
 ### Fixed
 - Adapted WASM engine initialization, module compilation and instantiation error handling to the updated Wasmtime API.

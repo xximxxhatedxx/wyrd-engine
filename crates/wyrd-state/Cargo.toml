@@ -1,6 +1,6 @@
 [package]
 name = "wyrd-state"
-version.workspace = true
+version = "0.1.1"
 edition.workspace = true
 rust-version.workspace = true
 license.workspace = true
@@ -16,4 +16,4 @@ description = "Cross-process atomic state file serialization for Wyrd (theme.tom
 anyhow = "1"
 libc = "0.2"
 serde = { version = "1", features = ["derive"] }
-toml = "0.8"
+toml = "1"

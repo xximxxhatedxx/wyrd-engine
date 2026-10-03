@@ -136,8 +136,9 @@ impl WasmModuleRunner {
                             })?;
                         }
                     }
-                    Module::new(engine.engine(), &self.wasm_bytes)
-                        .map_err(|e| anyhow::anyhow!("failed to compile WASM module '{}': {e}", name))?
+                    Module::new(engine.engine(), &self.wasm_bytes).map_err(|e| {
+                        anyhow::anyhow!("failed to compile WASM module '{}': {e}", name)
+                    })?
                 }
             };
             self.wasm_bytes = Vec::new();

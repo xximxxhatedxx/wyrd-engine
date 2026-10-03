@@ -35,9 +35,9 @@ keywords = ["wayland", "layer-shell", "lua", "wasm", "gui"]
 categories = ["gui", "rendering", "os::linux-apis"]
 
 [workspace.dependencies]
-wyrd-state      = { path = "crates/wyrd-state", version = "0.1.0" }
-wyrd-graphics   = { path = "crates/wyrd-graphics", version = "0.1.0", default-features = false }
-wyrd-script     = { path = "crates/wyrd-script", version = "0.1.0", default-features = false }
+wyrd-state      = { path = "crates/wyrd-state", version = "0.1.1" }
+wyrd-graphics   = { path = "crates/wyrd-graphics", version = "0.1.1", default-features = false }
+wyrd-script     = { path = "crates/wyrd-script", version = "0.1.1", default-features = false }
 wyrd-compositor = { path = "crates/wyrd-compositor", version = "0.1.0" }
 wyrd-widgets    = { path = "crates/wyrd-widgets", version = "0.1.0" }
 wyrd-wayland    = { path = "crates/wyrd-wayland", version = "0.1.0" }

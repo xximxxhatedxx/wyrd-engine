@@ -39,9 +39,9 @@ wyrd-engine = "0.1.1"
 
 # Lightweight subcrates (e.g., for wallpaper/lock daemons — without wasm or compositor):
 [dependencies]
-wyrd-graphics = { version = "0.1.0", default-features = false }
-wyrd-script   = "0.1.0"
-wyrd-state    = "0.1.0"
+wyrd-graphics = { version = "0.1.1", default-features = false }
+wyrd-script   = "0.1.1"
+wyrd-state    = "0.1.1"
 ```
 
 ---
