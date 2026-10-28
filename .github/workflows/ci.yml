@@ -1,0 +1,350 @@
+name: CI
+
+on:
+  push:
+    branches: [ "main" ]
+    tags: [ "v*" ]
+  pull_request:
+    branches: [ "main" ]
+  workflow_dispatch:
+  schedule:
+    - cron: "17 4 * * *"
+
+env:
+  CARGO_TERM_COLOR: always
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: Build & Test (Stable)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # Validate GitHub Actions syntax and workflow schemas early via actionlint
+      - name: Validate workflow YAML with actionlint
+        uses: raven-actions/actionlint@v2
+        with:
+          fail-on-error: true
+          shellcheck: false
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy, rustfmt
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwayland-dev libxkbcommon-dev libfontconfig1-dev
+
+      - name: Install cargo-machete
+        uses: taiki-e/install-action@cargo-machete
+
+      - name: Check for unused dependencies
+        run: cargo machete --with-metadata
+
+      - name: Verify crate DAG boundaries
+        run: |
+          set -euo pipefail
+          check() {
+            local pkg="$1" pat="$2"
+            if cargo tree -p "$pkg" --depth 2 | tail -n +2 | grep -E "$pat" >/dev/null; then
+              echo "ERROR: $pkg depends on $pat" >&2
+              exit 1
+            fi
+          }
+          check wyrd-sync '^wyrd-'
+          check wyrd-graphics 'wyrd-widgets'
+          check wyrd-wayland 'wyrd-(script|widgets)'
+          check wyrd-compositor 'wyrd-(graphics|script|wayland)'
+          check wyrd-wasm 'wyrd-wayland'
+          check wyrd-script 'wyrd-(graphics|widgets|wayland|state|compositor|wasm|settings)'
+
+      - name: Verify crate README files and packaging
+        run: |
+          for c in wyrd-state wyrd-sync wyrd-graphics wyrd-script wyrd-compositor \
+                   wyrd-widgets wyrd-wayland wyrd-wasm wyrd-settings wyrd-engine; do
+            test -f "crates/$c/README.md"
+            cargo package --list -p "$c" | grep -q '^README\.md$'
+          done
+
+      - name: Check code formatting
+        run: cargo fmt --all -- --check
+
+      - name: Cargo check
+        run: cargo check --locked --all-targets --all-features
+
+      - name: Check workspace without default features
+        run: cargo check --locked --workspace --no-default-features
+
+      - name: Run all tests
+        run: cargo test --locked --all-targets --all-features --verbose
+
+      - name: Run doc tests
+        run: cargo test --locked --doc --workspace --all-features
+
+      - name: Run Clippy
+        run: cargo clippy --locked --all-targets --all-features -- -D warnings
+
+  wayland-integration:
+    name: Wayland integration (headless Sway)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build isolated Wayland test image
+        run: |
+          docker build \
+            --file ci/wayland-test.Dockerfile \
+            --tag localhost/wyrd-wayland-test:local \
+            .
+
+      - name: Start headless Sway
+        env:
+          WLR_BACKENDS: headless
+          WLR_RENDERER: pixman
+          WLR_LIBINPUT_NO_DEVICES: "1"
+          XDG_RUNTIME_DIR: /tmp/wyrd-test-runtime
+        run: |
+          docker run --rm -d \
+            --name wyrd-wayland-test \
+            --volume "$PWD":/work:Z \
+            --volume wyrd-target-cache:/work/target \
+            --env WLR_BACKENDS="$WLR_BACKENDS" \
+            --env WLR_RENDERER="$WLR_RENDERER" \
+            --env WLR_LIBINPUT_NO_DEVICES="$WLR_LIBINPUT_NO_DEVICES" \
+            --env XDG_RUNTIME_DIR="$XDG_RUNTIME_DIR" \
+            localhost/wyrd-wayland-test:local \
+            bash -lc 'mkdir -p "$XDG_RUNTIME_DIR" && chmod 700 "$XDG_RUNTIME_DIR" && exec sway -c /dev/null --unsupported-gpu > /tmp/sway.log 2>&1'
+
+      - name: Verify compositor socket
+        env:
+          XDG_RUNTIME_DIR: /tmp/wyrd-test-runtime
+        run: |
+          docker exec wyrd-wayland-test bash -lc '
+            set -euo pipefail
+            for i in $(seq 1 60); do
+              SOCK=$(find "$XDG_RUNTIME_DIR" -maxdepth 1 -type s -name "wayland-*" -print -quit)
+              if [ -n "$SOCK" ] && [ -S "$SOCK" ]; then
+                export WAYLAND_DISPLAY=$(basename "$SOCK")
+                echo "WAYLAND_DISPLAY=$WAYLAND_DISPLAY"
+                exit 0
+              fi
+              sleep 0.5
+            done
+            echo "No Wayland socket found in $XDG_RUNTIME_DIR" >&2
+            find "$XDG_RUNTIME_DIR" -maxdepth 1 -ls >&2
+            exit 1
+          '
+
+      - name: Run Wayland integration tests
+        env:
+          WLR_LIBINPUT_NO_DEVICES: "1"
+          XDG_RUNTIME_DIR: /tmp/wyrd-test-runtime
+        run: |
+          mkdir -p ci/logs
+          set -o pipefail
+          docker exec \
+            --env WLR_LIBINPUT_NO_DEVICES="$WLR_LIBINPUT_NO_DEVICES" \
+            --env XDG_RUNTIME_DIR="$XDG_RUNTIME_DIR" \
+            wyrd-wayland-test \
+            bash -lc '
+              set -euo pipefail
+              SOCK=$(find "$XDG_RUNTIME_DIR" -maxdepth 1 -type s -name "wayland-*" -print -quit)
+              export WAYLAND_DISPLAY=$(basename "$SOCK")
+              test -n "$WAYLAND_DISPLAY"
+              test -S "$XDG_RUNTIME_DIR/$WAYLAND_DISPLAY"
+              echo "WAYLAND_DISPLAY=$WAYLAND_DISPLAY"
+              echo "===== real_compositor_smoke ====="
+              cargo test -p wyrd-wayland --test real_compositor_smoke -- --nocapture
+              echo "===== layer_shell_lifecycle ====="
+              cargo test -p wyrd-wayland --test layer_shell_lifecycle -- --nocapture
+            ' 2>&1 | tee ci/logs/wayland-integration.log
+
+      - name: Collect Sway log
+        if: always()
+        run: docker cp wyrd-wayland-test:/tmp/sway.log /tmp/sway.log
+
+      - name: Upload Wayland test logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: wayland-integration-logs
+          path: |
+            /tmp/sway.log
+            ci/logs/*.log
+          if-no-files-found: warn
+
+      - name: Cleanup container
+        if: always()
+        run: docker rm -f wyrd-wayland-test
+
+  msrv-core:
+    name: Core MSRV (1.90)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust 1.90 toolchain
+        uses: dtolnay/rust-toolchain@1.90
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwayland-dev libxkbcommon-dev libfontconfig1-dev
+
+      - name: Check core workspace on MSRV
+        run: cargo check --locked --workspace --exclude wyrd-wasm
+
+  msrv-wasm:
+    name: wyrd-wasm MSRV (1.96)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust 1.96 toolchain
+        uses: dtolnay/rust-toolchain@1.96
+
+      - name: Check wyrd-wasm on MSRV
+        run: cargo check --locked -p wyrd-wasm
+
+  msrv-canary:
+    name: wyrd-wasm compiler canary (1.95, non-blocking)
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust 1.95 toolchain
+        uses: dtolnay/rust-toolchain@1.95
+
+      - name: Check whether Wasmtime compiles with Rust 1.95
+        run: cargo check --locked -p wyrd-wasm --ignore-rust-version
+
+  gpu-smoke:
+    name: GPU smoke (llvmpipe, observational)
+    if: github.event_name == 'pull_request'
+    continue-on-error: true
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Install software Vulkan driver
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwayland-dev libxkbcommon-dev libfontconfig1-dev \
+            libvulkan1 mesa-vulkan-drivers vulkan-tools
+
+      - name: Inspect llvmpipe Vulkan adapter
+        env:
+          VK_ICD_FILENAMES: /usr/share/vulkan/icd.d/lvp_icd.x86_64.json
+        run: vulkaninfo --summary
+
+      - name: Run focused GPU smoke tests
+        env:
+          WGPU_BACKEND: vulkan
+          VK_ICD_FILENAMES: /usr/share/vulkan/icd.d/lvp_icd.x86_64.json
+        run: |
+          cargo test --locked -p wyrd-graphics --features gpu-render \
+            offscreen_target_contains_rendered_solid_rect -- --ignored --nocapture
+          cargo test --locked -p wyrd-graphics --features gpu-render \
+            gpu_rounded_clip_excludes_corner_pixels -- --ignored --nocapture
+
+  gpu-nightly:
+    name: GPU renderer (nightly software Vulkan)
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Install Vulkan software driver
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwayland-dev libxkbcommon-dev libfontconfig1-dev \
+            libvulkan1 mesa-vulkan-drivers vulkan-tools
+
+      - name: Inspect Vulkan adapters
+        run: vulkaninfo --summary
+
+      - name: Exercise offscreen GPU rendering
+        env:
+          WGPU_BACKEND: vulkan
+        run: |
+          cargo test --locked -p wyrd-graphics --features gpu-render -- --ignored --nocapture
+          cargo test --locked -p wyrd-widgets --features gpu-render \
+            benchmark_cpu_and_gpu_same_1000_node_scene -- --ignored --nocapture
+          cargo test --locked -p wyrd-engine --features gpu-render \
+            --test gpu_e2e -- --ignored --nocapture
+          cargo test --locked -p wyrd-engine --features gpu-render \
+            --test gpu_offscreen -- --ignored --nocapture
+
+      - name: Build isolated Wayland test image
+        run: |
+          docker build \
+            --file ci/wayland-test.Dockerfile \
+            --tag localhost/wyrd-wayland-test:gpu \
+            .
+
+      - name: Start headless Sway (pixman compositor, Vulkan wgpu)
+        run: |
+          docker run --rm -d \
+            --name wyrd-gpu-wayland-test \
+            --volume "$PWD":/work:Z \
+            --volume wyrd-gpu-target-cache:/work/target \
+            --env WLR_BACKENDS=headless \
+            --env WLR_RENDERER=pixman \
+            --env WLR_LIBINPUT_NO_DEVICES=1 \
+            --env WGPU_BACKEND=vulkan \
+            --env XDG_RUNTIME_DIR=/tmp/wyrd-test-runtime \
+            localhost/wyrd-wayland-test:gpu \
+            bash -lc 'mkdir -p "$XDG_RUNTIME_DIR" && chmod 700 "$XDG_RUNTIME_DIR" && exec sway -c /dev/null --unsupported-gpu > /tmp/sway.log 2>&1'
+
+      - name: Run Wayland smoke, lifecycle, and wgpu Vulkan present tests
+        run: |
+          docker exec wyrd-gpu-wayland-test bash -lc '
+            set -euo pipefail
+            for i in $(seq 1 60); do
+              SOCK=$(find "$XDG_RUNTIME_DIR" -maxdepth 1 -type s -name "wayland-*" -print -quit)
+              if [ -n "$SOCK" ] && [ -S "$SOCK" ]; then
+                export WAYLAND_DISPLAY=$(basename "$SOCK")
+                break
+              fi
+              sleep 0.5
+            done
+            test -n "${WAYLAND_DISPLAY:-}"
+            export WGPU_BACKEND=vulkan
+            export WYRD_TEST_GPU=1
+            echo "WLR_RENDERER=$WLR_RENDERER WGPU_BACKEND=$WGPU_BACKEND WAYLAND_DISPLAY=$WAYLAND_DISPLAY"
+            vulkaninfo --summary
+            cargo test --locked -p wyrd-wayland --test real_compositor_smoke -- --nocapture
+            cargo test --locked -p wyrd-wayland --test layer_shell_lifecycle -- --nocapture
+            cargo test --locked -p wyrd-wayland --features gpu-render \
+              --test layer_shell_lifecycle layer_shell_surface_presents_a_vulkan_gpu_frame \
+              -- --nocapture
+            WGPU_BACKEND=unsupported cargo test --locked -p wyrd-wayland \
+              --features gpu-render --test layer_shell_lifecycle \
+              layer_shell_surface_presents_a_vulkan_gpu_frame -- --nocapture
+          '
+
+      - name: Collect and clean up Wayland test container
+        if: always()
+        run: |
+          docker cp wyrd-gpu-wayland-test:/tmp/sway.log /tmp/sway-gpu.log || true
+          docker rm -f wyrd-gpu-wayland-test || true
+
+      - name: Upload GPU Wayland logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: gpu-nightly-wayland-logs
+          path: /tmp/sway-gpu.log
+          if-no-files-found: warn
