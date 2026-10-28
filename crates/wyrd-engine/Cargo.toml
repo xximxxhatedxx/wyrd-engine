@@ -1,0 +1,44 @@
+[package]
+name = "wyrd-engine"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+readme = "README.md"
+keywords.workspace = true
+categories.workspace = true
+description = "Core Wayland, Lua, WASM and rendering engine facade for the Wyrd ecosystem"
+
+[lib]
+name = "wyrd_engine"
+path = "src/lib.rs"
+
+[features]
+default = ["config", "lua", "http-fetch", "wayland", "compositor"]
+full = ["config", "lua", "wasm", "http-fetch", "wayland", "compositor"]
+config = ["dep:wyrd-settings"]
+lua = ["wyrd-script/lua", "wyrd-settings?/lua"]
+wasm = ["dep:wyrd-wasm"]
+wayland = ["dep:wyrd-wayland"]
+compositor = ["wayland", "dep:wyrd-compositor", "dep:wayland-client"]
+gpu-render = ["wayland", "wyrd-graphics/gpu-render", "wyrd-widgets/gpu-render", "wyrd-wayland/gpu-render"]
+http-fetch = ["wyrd-graphics/http-fetch"]
+
+[dependencies]
+log = "0.4"
+wayland-client = { version = "0.31", optional = true }
+wyrd-compositor = { workspace = true, optional = true }
+wyrd-settings = { workspace = true, optional = true }
+wyrd-graphics = { workspace = true }
+wyrd-script = { workspace = true }
+wyrd-state = { workspace = true }
+wyrd-wasm = { workspace = true, optional = true }
+wyrd-wayland = { workspace = true, optional = true }
+wyrd-widgets = { workspace = true }
+
+[dev-dependencies]
+anyhow = "1"
+pollster = "0.4"

@@ -1,0 +1,17 @@
+# Rust build artifacts
+target/
+**/*.rs.bk
+
+# Debug symbols
+*.pdb
+
+# macOS
+.DS_Store
+
+# CI logs
+ci/logs/
+*.log
+
+# Python cache
+__pycache__/
+*.pyc
