@@ -2,7 +2,7 @@
 
 Unified facade crate re-exporting [`wyrd-state`](https://crates.io/crates/wyrd-state), [`wyrd-graphics`](https://crates.io/crates/wyrd-graphics), [`wyrd-script`](https://crates.io/crates/wyrd-script), [`wyrd-compositor`](https://crates.io/crates/wyrd-compositor), [`wyrd-widgets`](https://crates.io/crates/wyrd-widgets), [`wyrd-wayland`](https://crates.io/crates/wyrd-wayland), [`wyrd-wasm`](https://crates.io/crates/wyrd-wasm), and [`wyrd-settings`](https://crates.io/crates/wyrd-settings) for the Wyrd desktop ecosystem.
 
-The default feature set includes configuration, Lua, HTTP fetching, the Wayland runtime, and compositor integrations. The `full` feature additionally enables the optional `wasm` feature, which pulls in `wyrd-wasm` and Wasmtime 49.x and therefore requires Rust 1.96+; `wasm` is intentionally excluded from the Rust 1.90 default build. The `wayland` and `compositor` features can be omitted by renderer/configuration consumers that provide their own Wayland client; `compositor` also enables `wayland`.
+The default feature set includes the `config` feature (backed by `wyrd-settings`), Lua, HTTP fetching, the Wayland runtime, and compositor integrations. The `full` feature additionally enables the optional `wasm` feature, which pulls in `wyrd-wasm` and Wasmtime 49.x and therefore requires Rust 1.96+; `wasm` is intentionally excluded from the Rust 1.90 default build. The `wayland` and `compositor` features can be omitted by renderer/settings consumers that provide their own Wayland client; `compositor` also enables `wayland`.
 
 > **GPU status:** GPU rendering (`gpu-render`) is opt-in and experimental in 0.1.0. It accelerates 2D scene rendering via `wgpu` and falls back to CPU (`tiny-skia`) automatically on initialization or swapchain failure, or when `WYRD_FORCE_CPU=1` is set. Text shaping, image decoding, SVG rasterization, and path flattening remain CPU work. See [`wyrd-graphics`](../wyrd-graphics/README.md) for coverage details.
  
@@ -83,8 +83,8 @@ WYRD_FORCE_CPU=1
 wyrd-engine = "0.1.0"
 ```
 
-For a renderer/configuration consumer that implements its own Wayland client,
-omit the default Wayland/compositor runtime while retaining the typed config,
+For a renderer/settings consumer that implements its own Wayland client,
+omit the default Wayland/compositor runtime while retaining the typed settings API,
 Lua runtime, widgets, renderer, and state APIs:
 
 ```toml

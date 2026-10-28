@@ -21,7 +21,7 @@ This repository is a Cargo workspace providing both the unified [`wyrd-engine`](
 | [`wyrd-wayland`](https://github.com/xximxxhatedxx/wyrd-engine/tree/main/crates/wyrd-wayland) | `wyrd-graphics`, `wyrd-state`, `wyrd-sync` | Wayland surface backends (layer-shell + xdg-shell fallback), `ShmBufferPool`, seat input (`wl_pointer`, `wl_keyboard`), `SurfaceManager` |
 | [`wyrd-wasm`](https://github.com/xximxxhatedxx/wyrd-engine/tree/main/crates/wyrd-wasm) | `wyrd-graphics`, `wyrd-state` | Sandboxed Wasmtime module host, capability checks (`manifest.toml`), and `ModuleSupervisor` |
 | [`wyrd-settings`](https://github.com/xximxxhatedxx/wyrd-engine/tree/main/crates/wyrd-settings) | `wyrd-script`, `wyrd-widgets`, `wyrd-graphics`, `wyrd-sync` | Typed `ShellConfig`, `SurfaceConfig`, `SurfaceKind`, `Layer`, `KeyboardInteractivity`, and Lua parsers |
-| [`wyrd-engine`](https://github.com/xximxxhatedxx/wyrd-engine/tree/main/crates/wyrd-engine) | All subcrates (`config` & `wasm` optional) | Unified facade crate |
+| [`wyrd-engine`](https://github.com/xximxxhatedxx/wyrd-engine/tree/main/crates/wyrd-engine) | All subcrates (`wyrd-settings` and `wyrd-wasm` optional; settings are enabled by the `config` feature) | Unified facade crate |
 
 ---
 
@@ -36,7 +36,7 @@ wyrd-engine = "0.1.0"
 # or via Git:
 # wyrd-engine = { git = "https://github.com/xximxxhatedxx/wyrd-engine.git", tag = "v0.1.0" }
 
-# Facade for a renderer/config consumer (e.g. wallpaper or greeter), without the
+# Facade for a renderer/settings consumer (e.g. wallpaper or greeter), without the
 # shell's Wayland runtime, compositor integrations, or WASM host:
 [dependencies]
 wyrd-engine = { version = "0.1.0", default-features = false, features = ["config", "lua"] }
