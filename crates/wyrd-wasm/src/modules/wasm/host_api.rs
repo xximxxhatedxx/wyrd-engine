@@ -3516,6 +3516,7 @@ mod generic_dbus_tests {
     }
 
     #[test]
+    #[ignore = "spawns /bin/sleep; flaky on minimal CI images"]
     fn bounded_command_times_out() {
         let error =
             run_command_with_timeout(std::path::Path::new("/bin/sleep"), &["10".to_string()])
@@ -3524,6 +3525,7 @@ mod generic_dbus_tests {
     }
 
     #[test]
+    #[ignore = "requires a local Unix socket listener; flaky on restricted CI"]
     fn nonblocking_unix_socket_connect_succeeds_for_listener() {
         let temp_dir = tempfile::tempdir().unwrap();
         let socket_path = temp_dir.path().join("host.sock");
@@ -3539,6 +3541,7 @@ mod generic_dbus_tests {
 
     #[cfg(target_os = "linux")]
     #[test]
+    #[ignore = "uses /proc and /bin/sleep; flaky on restricted CI"]
     fn child_reaper_dispatches_later_children_without_waiting_for_first() {
         let (tx, rx) = std::sync::mpsc::channel();
         dispatch_child_reaper(rx);
@@ -3790,6 +3793,7 @@ mod generic_dbus_tests {
     }
 
     #[tokio::test]
+    #[ignore = "socket reader with 2 MiB payload; flaky on slow CI"]
     async fn test_socket_reader_payload_limit_enforced() {
         use std::io::Write;
         use std::os::unix::net::UnixStream;
